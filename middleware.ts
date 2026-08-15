@@ -28,6 +28,10 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/whatsapp/webhook")) {
+    return NextResponse.next();
+  }
+
   const { response, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
