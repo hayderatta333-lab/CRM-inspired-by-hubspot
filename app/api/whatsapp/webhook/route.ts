@@ -30,9 +30,11 @@ export async function POST(req: NextRequest) {
       const fromPhone = message.from;
       const text = message.text?.body ?? "";
       const contactName = value?.contacts?.[0]?.profile?.name ?? "Unknown";
+      const nowIso = new Date().toISOString();
 
       const supabase = await createAdminClient();
 
+      // 1. Always log the raw message for history
       await supabase.from("whatsapp_messages").insert({
         phone: fromPhone,
         contact_name: contactName,
@@ -40,6 +42,39 @@ export async function POST(req: NextRequest) {
         direction: "inbound",
         raw_payload: message,
       });
+
+      // 2. Try to match this phone number to an existing CRM contact
+      const { data: matchedContactId } = await supabase.rpc(
+        "match_contact_by_phone",
+        { p_phone: fromPhone }
+      );
+
+      // 3. Upsert whatsapp_leads so every conversation has one tracked row
+      const { data: existingLead } = await supabase
+        .from("whatsapp_leads")
+        .select("id")
+        .eq("phone", fromPhone)
+        .maybeSingle();
+
+      const leadPayload = {
+        phone: fromPhone,
+        contact_name: contactName,
+        last_message_at: nowIso,
+        status: matchedContactId ? "assigned" : "new",
+        contact_id: matchedContactId ?? null,
+      };
+
+      if (existingLead) {
+        await supabase
+          .from("whatsapp_leads")
+          .update(leadPayload)
+          .eq("id", existingLead.id);
+      } else {
+        await supabase.from("whatsapp_leads").insert({
+          ...leadPayload,
+          first_message_at: nowIso,
+        });
+      }
     }
 
     return NextResponse.json({ status: "ok" });
