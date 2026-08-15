@@ -51,6 +51,7 @@ export function ActivityTimeline({ parent, parentId, initialEntries }: ActivityT
         subject: note.trim().slice(0, 80),
         body: note.trim(),
         status: "completed",
+        priority: "medium",
         ...parentField,
       });
 

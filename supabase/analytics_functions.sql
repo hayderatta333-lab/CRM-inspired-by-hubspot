@@ -106,7 +106,7 @@ create or replace function public.fn_stage_funnel(
 returns table (
   stage_id uuid,
   stage_name text,
-  position integer,
+  "position" integer,
   deal_count integer,
   total_value numeric,
   probability numeric,
