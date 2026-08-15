@@ -51,7 +51,7 @@ export function CompanyForm({ company, members }: CompanyFormProps) {
         : await createCompany(values);
 
       if (result.success) {
-        router.push(`/dashboard/companies/${result.data.id}`);
+        router.push(`/companies/${result.data.id}`);
         router.refresh();
         return;
       }

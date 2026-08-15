@@ -33,7 +33,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               </div>
             </div>
             <Link
-              href={`/dashboard/contacts/${contact.id}/edit`}
+              href={`/contacts/${contact.id}/edit`}
               className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
               aria-label="Edit contact"
             >
@@ -59,7 +59,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             {contact.company && (
               <div className="flex items-center gap-2 text-zinc-600">
                 <Building2 className="size-3.5 text-zinc-400" />
-                <Link href={`/dashboard/companies/${contact.company.id}`} className="hover:underline">
+                <Link href={`/companies/${contact.company.id}`} className="hover:underline">
                   {contact.company.name}
                 </Link>
               </div>

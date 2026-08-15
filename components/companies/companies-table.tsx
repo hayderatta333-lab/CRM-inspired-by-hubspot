@@ -89,7 +89,7 @@ export function CompaniesTable({ initialData, canDelete }: CompaniesTableProps) 
         </div>
 
         <Link
-          href="/dashboard/companies/new"
+          href="/companies/new"
           className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
         >
           <Plus className="size-4" />
@@ -122,7 +122,7 @@ export function CompaniesTable({ initialData, canDelete }: CompaniesTableProps) 
               <tr key={company.id} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50">
                 <td className="px-3 py-2.5">
                   <Link
-                    href={`/dashboard/companies/${company.id}`}
+                    href={`/companies/${company.id}`}
                     className="font-medium text-zinc-900 hover:underline"
                   >
                     {company.name}
@@ -150,7 +150,7 @@ export function CompaniesTable({ initialData, canDelete }: CompaniesTableProps) 
                 <td className="px-3 py-2.5">
                   <div className="flex items-center justify-end gap-1">
                     <Link
-                      href={`/dashboard/companies/${company.id}/edit`}
+                      href={`/companies/${company.id}/edit`}
                       className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
                       aria-label="Edit company"
                     >

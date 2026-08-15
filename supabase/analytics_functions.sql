@@ -75,7 +75,7 @@ begin
     (select count(*) from closed_in_period where status = 'won')::int as won_count,
     (select count(*) from closed_in_period where status = 'lost')::int as lost_count,
     coalesce((
-      select round(avg(extract(epoch from (actual_close_date - created_at::date)) / 86400)::numeric, 1)
+  select round(avg(actual_close_date - created_at::date)::numeric, 1)
       from closed_in_period
       where status = 'won'
     ), 0) as average_deal_velocity_days,

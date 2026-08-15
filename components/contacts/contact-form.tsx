@@ -61,7 +61,7 @@ export function ContactForm({ contact, companies, members }: ContactFormProps) {
         : await createContact(values);
 
       if (result.success) {
-        router.push(`/dashboard/contacts/${result.data.id}`);
+        router.push(`/contacts/${result.data.id}`);
         router.refresh();
         return;
       }

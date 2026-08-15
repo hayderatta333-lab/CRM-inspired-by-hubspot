@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const TABS = [
-  { href: "/dashboard/settings/organization", label: "Organization" },
-  { href: "/dashboard/settings/members", label: "Members" },
-  { href: "/dashboard/settings/pipelines", label: "Pipelines" },
+  { href: "/settings/organization", label: "Organization" },
+  { href: "/settings/members", label: "Members" },
+  { href: "/settings/pipelines", label: "Pipelines" },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

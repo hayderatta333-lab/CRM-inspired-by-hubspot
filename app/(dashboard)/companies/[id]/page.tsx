@@ -28,7 +28,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
           <div className="flex items-start justify-between">
             <h1 className="text-base font-semibold text-zinc-900">{company.name}</h1>
             <Link
-              href={`/dashboard/companies/${company.id}/edit`}
+              href={`/companies/${company.id}/edit`}
               className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
               aria-label="Edit company"
             >
@@ -96,7 +96,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
             {contactsResult.success &&
               contactsResult.data.data.map((contact) => (
                 <li key={contact.id} className="py-2">
-                  <Link href={`/dashboard/contacts/${contact.id}`} className="text-sm text-zinc-800 hover:underline">
+                  <Link href={`/contacts/${contact.id}`} className="text-sm text-zinc-800 hover:underline">
                     {contact.first_name} {contact.last_name ?? ""}
                   </Link>
                   {contact.job_title && <p className="text-xs text-zinc-400">{contact.job_title}</p>}
