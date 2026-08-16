@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
 const DEFAULT_ORG_ID = "304206e2-c776-4034-b4b3-6f65a2e5b2af";
+const DEFAULT_USER_ID = "9325b9ed-2060-44fa-a2ba-fc1b2320bcc8";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -53,7 +54,6 @@ export async function POST(req: NextRequest) {
 
     let finalContactId = matchedContactId ?? null;
 
-    // Auto-create a new contact if nothing matched
     if (!finalContactId) {
       const nameParts = contactName.trim().split(" ");
       const firstName = nameParts[0] || "WhatsApp";
@@ -63,6 +63,8 @@ export async function POST(req: NextRequest) {
         .from("contacts")
         .insert({
           org_id: DEFAULT_ORG_ID,
+          created_by: DEFAULT_USER_ID,
+          owner_id: DEFAULT_USER_ID,
           first_name: firstName,
           last_name: lastName,
           phone: fromPhone,
