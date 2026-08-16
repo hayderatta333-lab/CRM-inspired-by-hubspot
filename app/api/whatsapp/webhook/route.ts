@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+const DEFAULT_ORG_ID = "304206e2-c776-4034-b4b3-6f65a2e5b2af";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -17,7 +18,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  console.log("WEBHOOK BODY:", JSON.stringify(body));
 
   try {
     const entry = body?.entry?.[0];
@@ -26,7 +26,6 @@ export async function POST(req: NextRequest) {
     const message = value?.messages?.[0];
 
     if (!message) {
-      console.log("NO MESSAGE FOUND - probably a status update, skipping");
       return NextResponse.json({ status: "ok" });
     }
 
@@ -35,10 +34,7 @@ export async function POST(req: NextRequest) {
     const contactName = value?.contacts?.[0]?.profile?.name ?? "Unknown";
     const nowIso = new Date().toISOString();
 
-    console.log("PROCESSING MESSAGE FROM:", fromPhone, "TEXT:", text);
-
     const supabase = await createAdminClient();
-    console.log("SUPABASE CLIENT CREATED");
 
     const { error: msgError } = await supabase.from("whatsapp_messages").insert({
       phone: fromPhone,
@@ -47,27 +43,56 @@ export async function POST(req: NextRequest) {
       direction: "inbound",
       raw_payload: message,
     });
-    console.log("MESSAGE INSERT ERROR:", msgError);
+    if (msgError) console.error("MESSAGE INSERT ERROR:", msgError);
 
     const { data: matchedContactId, error: rpcError } = await supabase.rpc(
       "match_contact_by_phone",
       { p_phone: fromPhone }
     );
-    console.log("RPC RESULT:", matchedContactId, "RPC ERROR:", rpcError);
+    if (rpcError) console.error("RPC ERROR:", rpcError);
+
+    let finalContactId = matchedContactId ?? null;
+
+    // Auto-create a new contact if nothing matched
+    if (!finalContactId) {
+      const nameParts = contactName.trim().split(" ");
+      const firstName = nameParts[0] || "WhatsApp";
+      const lastName = nameParts.slice(1).join(" ") || null;
+
+      const { data: newContact, error: createError } = await supabase
+        .from("contacts")
+        .insert({
+          org_id: DEFAULT_ORG_ID,
+          first_name: firstName,
+          last_name: lastName,
+          phone: fromPhone,
+          lifecycle_stage: "lead",
+          lead_status: "new",
+          source: "whatsapp",
+        })
+        .select("id")
+        .single();
+
+      if (createError) {
+        console.error("AUTO-CREATE CONTACT ERROR:", createError);
+      } else {
+        finalContactId = newContact.id;
+      }
+    }
 
     const { data: existingLead, error: selectError } = await supabase
       .from("whatsapp_leads")
       .select("id")
       .eq("phone", fromPhone)
       .maybeSingle();
-    console.log("EXISTING LEAD:", existingLead, "SELECT ERROR:", selectError);
+    if (selectError) console.error("SELECT ERROR:", selectError);
 
     const leadPayload = {
       phone: fromPhone,
       contact_name: contactName,
       last_message_at: nowIso,
-      status: matchedContactId ? "assigned" : "new",
-      contact_id: matchedContactId ?? null,
+      status: "assigned",
+      contact_id: finalContactId,
     };
 
     if (existingLead) {
@@ -75,16 +100,15 @@ export async function POST(req: NextRequest) {
         .from("whatsapp_leads")
         .update(leadPayload)
         .eq("id", existingLead.id);
-      console.log("UPDATE ERROR:", updateError);
+      if (updateError) console.error("UPDATE ERROR:", updateError);
     } else {
       const { error: insertError } = await supabase.from("whatsapp_leads").insert({
         ...leadPayload,
         first_message_at: nowIso,
       });
-      console.log("INSERT ERROR:", insertError);
+      if (insertError) console.error("INSERT ERROR:", insertError);
     }
 
-    console.log("DONE PROCESSING");
     return NextResponse.json({ status: "ok" });
   } catch (err) {
     console.error("WHATSAPP WEBHOOK CRASH:", err);
