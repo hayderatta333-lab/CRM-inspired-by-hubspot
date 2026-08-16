@@ -4,17 +4,23 @@ import { Pencil, Mail, Phone, Briefcase, Building2 } from "lucide-react";
 import { requireOrgContext } from "@/lib/auth/session";
 import { getContact } from "@/lib/actions/contacts";
 import { getTimeline } from "@/lib/actions/activities";
+import { getWhatsAppThread } from "@/lib/actions/whatsapp";
 import { ActivityTimeline } from "@/components/shared/activity-timeline";
+import { WhatsAppPanel } from "@/components/shared/whatsapp-panel";
 import { formatDate, initials } from "@/lib/utils";
 
 export default async function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireOrgContext();
   const { id } = await params;
 
-  const [contactResult, timelineResult] = await Promise.all([getContact(id), getTimeline("contact", id)]);
-
+  const contactResult = await getContact(id);
   if (!contactResult.success) notFound();
   const contact = contactResult.data;
+
+  const [timelineResult, whatsappResult] = await Promise.all([
+    getTimeline("contact", id),
+    getWhatsAppThread(contact.phone ?? ""),
+  ]);
 
   return (
     <div className="grid grid-cols-1 gap-4 p-6 lg:grid-cols-3">
@@ -95,13 +101,23 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <div className="lg:col-span-2">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-900">Activity</h2>
-        <ActivityTimeline
-          parent="contact"
-          parentId={contact.id}
-          initialEntries={timelineResult.success ? timelineResult.data : []}
-        />
+      <div className="lg:col-span-2 flex flex-col gap-6">
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">WhatsApp</h2>
+          <WhatsAppPanel
+            phone={contact.phone}
+            initialMessages={whatsappResult.success ? whatsappResult.data : []}
+          />
+        </div>
+
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Activity</h2>
+          <ActivityTimeline
+            parent="contact"
+            parentId={contact.id}
+            initialEntries={timelineResult.success ? timelineResult.data : []}
+          />
+        </div>
       </div>
     </div>
   );
