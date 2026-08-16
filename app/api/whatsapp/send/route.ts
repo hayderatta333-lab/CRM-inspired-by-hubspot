@@ -4,6 +4,14 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
+    const secretHeader = req.headers.get("x-whatsapp-send-secret");
+    if (secretHeader !== process.env.WHATSAPP_SEND_SECRET) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { phone, message } = body;
 
