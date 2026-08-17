@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { generateAIReply } from "@/lib/gemini/reply";
+import { sendWhatsAppMessage } from "@/lib/whatsapp/send";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
 const DEFAULT_ORG_ID = "304206e2-c776-4034-b4b3-6f65a2e5b2af";
@@ -109,6 +111,27 @@ export async function POST(req: NextRequest) {
         first_message_at: nowIso,
       });
       if (insertError) console.error("INSERT ERROR:", insertError);
+    }
+
+    // --- AI auto-reply ---
+    try {
+      const aiReplyText = await generateAIReply(text);
+      const sendResult = await sendWhatsAppMessage(fromPhone, aiReplyText);
+
+      await supabase.from("whatsapp_messages").insert({
+        phone: fromPhone,
+        contact_name: contactName,
+        message_text: aiReplyText,
+        direction: "outbound",
+        raw_payload: sendResult,
+      });
+
+      await supabase
+        .from("whatsapp_leads")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("phone", fromPhone);
+    } catch (aiErr) {
+      console.error("AI REPLY ERROR:", aiErr);
     }
 
     return NextResponse.json({ status: "ok" });
