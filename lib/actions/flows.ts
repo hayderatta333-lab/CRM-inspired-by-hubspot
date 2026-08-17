@@ -21,7 +21,7 @@ export type FlowListItem = {
 export async function getFlows(): Promise<ActionResult<FlowListItem[]>> {
   try {
     const { orgId } = await requireOrgContext();
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from("flows")
@@ -43,7 +43,7 @@ export async function createFlow(
   try {
     const parsed = createFlowSchema.parse(input);
     const { orgId } = await requireOrgContext();
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from("flows")
@@ -63,7 +63,7 @@ export async function createFlow(
 export async function deleteFlow(flowId: string): Promise<ActionResult<null>> {
   try {
     const { orgId } = await requireOrgContext();
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { error } = await supabase
       .from("flows")
