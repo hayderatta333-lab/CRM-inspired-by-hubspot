@@ -23,8 +23,7 @@ export async function generateAIReply(userMessage: string): Promise<string> {
           },
         ],
         generationConfig: {
-          maxOutputTokens: 300,
-          temperature: 0.7,
+          maxOutputTokens: 1024,
         },
       }),
     }
@@ -37,6 +36,10 @@ export async function generateAIReply(userMessage: string): Promise<string> {
     throw new Error(data?.error?.message || "Gemini request failed");
   }
 
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const parts = data?.candidates?.[0]?.content?.parts;
+  const text = Array.isArray(parts)
+    ? parts.map((p: { text?: string }) => p.text ?? "").join("")
+    : "";
+
   return text?.trim() || "Sorry, I'm having trouble responding right now. Someone from our team will get back to you shortly.";
 }
