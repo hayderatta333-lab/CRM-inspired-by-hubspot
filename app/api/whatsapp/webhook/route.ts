@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { generateAIReply } from "@/lib/gemini/reply";
+import { generateAIReplyWithBooking } from "@/lib/gemini/reply";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/send";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
 
     // --- AI auto-reply ---
     try {
-      const aiReplyText = await generateAIReply(text);
+      const aiReplyText = await generateAIReplyWithBooking(text, contactName, fromPhone);
       const sendResult = await sendWhatsAppMessage(fromPhone, aiReplyText);
 
       await supabase.from("whatsapp_messages").insert({
