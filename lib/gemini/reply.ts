@@ -172,7 +172,7 @@ export async function generateAIReplyWithBooking(
     }
 
     contents.push({
-      role: "function",
+      role: "user",
       parts: [{ functionResponse: { name, response: functionResult } }],
     });
   }
