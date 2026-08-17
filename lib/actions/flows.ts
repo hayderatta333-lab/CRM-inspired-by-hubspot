@@ -79,3 +79,72 @@ export async function deleteFlow(flowId: string): Promise<ActionResult<null>> {
     return toActionError(err);
   }
 }
+
+export type FlowData = {
+  id: string;
+  name: string;
+  status: string;
+  nodes: unknown[];
+  edges: unknown[];
+};
+
+export async function getFlow(
+  flowId: string
+): Promise<ActionResult<FlowData>> {
+  try {
+    const { orgId } = await requireOrgContext();
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("flows")
+      .select("id, name, status, nodes, edges")
+      .eq("id", flowId)
+      .eq("org_id", orgId)
+      .single();
+
+    if (error) throw error;
+
+    return ok({
+      id: data.id,
+      name: data.name,
+      status: data.status,
+      nodes: (data.nodes as unknown[]) ?? [],
+      edges: (data.edges as unknown[]) ?? [],
+    });
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+const updateFlowDataSchema = z.object({
+  flowId: z.string().uuid(),
+  nodes: z.array(z.unknown()),
+  edges: z.array(z.unknown()),
+});
+
+export async function updateFlowData(
+  input: z.infer<typeof updateFlowDataSchema>
+): Promise<ActionResult<null>> {
+  try {
+    const parsed = updateFlowDataSchema.parse(input);
+    const { orgId } = await requireOrgContext();
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from("flows")
+      .update({
+        nodes: parsed.nodes,
+        edges: parsed.edges,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", parsed.flowId)
+      .eq("org_id", orgId);
+
+    if (error) throw error;
+
+    revalidatePath(`/flows/${parsed.flowId}`);
+    return ok(null);
+  } catch (err) {
+    return toActionError(err);
+  }
+}
