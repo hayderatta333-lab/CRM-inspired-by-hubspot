@@ -12,7 +12,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { first_name, last_name, email, phone, company_name } = body;
 
     if (!first_name && !email && !phone) {
       return NextResponse.json(
@@ -31,7 +30,6 @@ export async function POST(request: NextRequest) {
         last_name: last_name ?? "",
         email: email ?? null,
         phone: phone ?? null,
-        company_name: company_name ?? null,
         created_by: DEFAULT_USER_ID,
         owner_id: DEFAULT_USER_ID,
         source: "n8n",
