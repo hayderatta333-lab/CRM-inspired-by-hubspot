@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { generateAIReplyWithBooking } from "@/lib/gemini/reply";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/send";
+import { tryHandleFlowMessage } from "@/lib/flows/engine";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
 const DEFAULT_ORG_ID = "304206e2-c776-4034-b4b3-6f65a2e5b2af";
@@ -113,25 +114,39 @@ export async function POST(req: NextRequest) {
       if (insertError) console.error("INSERT ERROR:", insertError);
     }
 
-    // --- AI auto-reply ---
+    // --- Flow engine check (runs before AI auto-reply) ---
+    let handledByFlow = false;
     try {
-      const aiReplyText = await generateAIReplyWithBooking(text, contactName, fromPhone);
-      const sendResult = await sendWhatsAppMessage(fromPhone, aiReplyText);
-
-      await supabase.from("whatsapp_messages").insert({
-        phone: fromPhone,
-        contact_name: contactName,
-        message_text: aiReplyText,
-        direction: "outbound",
-        raw_payload: sendResult,
+      handledByFlow = await tryHandleFlowMessage({
+        orgId: DEFAULT_ORG_ID,
+        fromPhone,
+        text,
       });
+    } catch (flowErr) {
+      console.error("FLOW ENGINE ERROR:", flowErr);
+    }
 
-      await supabase
-        .from("whatsapp_leads")
-        .update({ last_message_at: new Date().toISOString() })
-        .eq("phone", fromPhone);
-    } catch (aiErr) {
-      console.error("AI REPLY ERROR:", aiErr);
+    // --- AI auto-reply (skipped if a flow already handled this message) ---
+    if (!handledByFlow) {
+      try {
+        const aiReplyText = await generateAIReplyWithBooking(text, contactName, fromPhone);
+        const sendResult = await sendWhatsAppMessage(fromPhone, aiReplyText);
+
+        await supabase.from("whatsapp_messages").insert({
+          phone: fromPhone,
+          contact_name: contactName,
+          message_text: aiReplyText,
+          direction: "outbound",
+          raw_payload: sendResult,
+        });
+
+        await supabase
+          .from("whatsapp_leads")
+          .update({ last_message_at: new Date().toISOString() })
+          .eq("phone", fromPhone);
+      } catch (aiErr) {
+        console.error("AI REPLY ERROR:", aiErr);
+      }
     }
 
     return NextResponse.json({ status: "ok" });
