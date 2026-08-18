@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, Building2, KanbanSquare, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Building2, KanbanSquare, Workflow, Settings } from "lucide-react";
 import type { OrgRole } from "@/types/crm";
 import { isManagerRole } from "@/types/crm";
 
@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/contacts", label: "Contacts", icon: Users },
   { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/deals", label: "Deals", icon: KanbanSquare },
+  { href: "/flows", label: "Flows", icon: Workflow },
 ];
 
 export function Sidebar({ orgName, role }: { orgName: string; role: OrgRole }) {
