@@ -1,54 +1,90 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/send";
 
-type FlowNodeType = "greeting" | "menu" | "booking" | "condition" | "handoff";
-
 type FlowNode = {
   id: string;
+  type?: string;
   data: {
-    nodeType: FlowNodeType;
-    message: string;
+    nodeType: "greeting" | "menu" | "booking" | "condition" | "handoff";
+    message?: string;
     options?: string[];
     conditionField?: string;
     conditionValue?: string;
   };
 };
 
-type FlowEdge = { source: string; target: string };
+type FlowEdge = {
+  id: string;
+  source: string;
+  target: string;
+};
 
-function findStartNode(nodes: FlowNode[], edges: FlowEdge[]): FlowNode | null {
-  if (nodes.length === 0) return null;
-  const targets = new Set(edges.map((e) => e.target));
-  return nodes.find((n) => !targets.has(n.id)) ?? nodes[0];
+function findStartNode(nodes: FlowNode[], edges: FlowEdge[]): FlowNode | undefined {
+  const targetIds = new Set(edges.map((e) => e.target));
+  return nodes.find((n) => !targetIds.has(n.id));
 }
 
-function findNextNode(
-  nodes: FlowNode[],
+function getOutgoingEdges(nodeId: string, edges: FlowEdge[]): FlowEdge[] {
+  return edges.filter((e) => e.source === nodeId);
+}
+
+function chooseNextNode(
+  node: FlowNode,
   edges: FlowEdge[],
-  currentId: string
-): FlowNode | null {
-  const edge = edges.find((e) => e.source === currentId);
-  if (!edge) return null;
-  return nodes.find((n) => n.id === edge.target) ?? null;
+  nodes: FlowNode[],
+  replyText: string
+): FlowNode | undefined {
+  const outgoing = getOutgoingEdges(node.id, edges);
+  if (outgoing.length === 0) return undefined;
+
+  if (outgoing.length === 1) {
+    return nodes.find((n) => n.id === outgoing[0].target);
+  }
+
+  const nodeType = node.data.nodeType;
+  const trimmedReply = replyText.trim();
+
+  if (nodeType === "menu") {
+    const asNumber = parseInt(trimmedReply, 10);
+    if (!isNaN(asNumber) && asNumber >= 1 && asNumber <= outgoing.length) {
+      return nodes.find((n) => n.id === outgoing[asNumber - 1].target);
+    }
+    const options = node.data.options ?? [];
+    const matchIndex = options.findIndex(
+      (opt) => opt.trim().toLowerCase() === trimmedReply.toLowerCase()
+    );
+    if (matchIndex !== -1 && outgoing[matchIndex]) {
+      return nodes.find((n) => n.id === outgoing[matchIndex].target);
+    }
+    return nodes.find((n) => n.id === outgoing[0].target);
+  }
+
+  if (nodeType === "condition") {
+    const conditionValue = (node.data.conditionValue ?? "").toLowerCase();
+    const matches =
+      conditionValue.length > 0 &&
+      trimmedReply.toLowerCase().includes(conditionValue);
+    const chosenEdge = matches ? outgoing[0] : outgoing[1] ?? outgoing[0];
+    return nodes.find((n) => n.id === chosenEdge.target);
+  }
+
+  return nodes.find((n) => n.id === outgoing[0].target);
 }
 
-/**
- * Checks for an active flow session or a matching trigger keyword, and
- * advances/starts the flow if applicable. Returns true if it handled the
- * message (caller should skip the Gemini AI auto-reply), false otherwise.
- */
-export async function tryHandleFlowMessage(params: {
+export async function tryHandleFlowMessage({
+  orgId,
+  fromPhone,
+  text,
+}: {
   orgId: string;
   fromPhone: string;
   text: string;
 }): Promise<boolean> {
-  const { orgId, fromPhone, text } = params;
-  const supabase = await createAdminClient();
+  const supabase = createAdminClient();
 
-  // 1. Is there an active flow session for this contact?
   const { data: session } = await supabase
     .from("flow_sessions")
-    .select("id, flow_id, current_node_id")
+    .select("*")
     .eq("org_id", orgId)
     .eq("contact_phone", fromPhone)
     .eq("status", "active")
@@ -57,22 +93,25 @@ export async function tryHandleFlowMessage(params: {
   if (session) {
     const { data: flow } = await supabase
       .from("flows")
-      .select("nodes, edges")
+      .select("*")
       .eq("id", session.flow_id)
-      .single();
+      .maybeSingle();
 
     if (!flow) return false;
 
     const nodes = (flow.nodes as FlowNode[]) ?? [];
     const edges = (flow.edges as FlowEdge[]) ?? [];
-    const nextNode = findNextNode(nodes, edges, session.current_node_id ?? "");
+    const currentNode = nodes.find((n) => n.id === session.current_node_id);
+    if (!currentNode) return false;
+
+    const nextNode = chooseNextNode(currentNode, edges, nodes, text);
 
     if (!nextNode) {
       await supabase
         .from("flow_sessions")
         .update({ status: "completed", updated_at: new Date().toISOString() })
         .eq("id", session.id);
-      return false;
+      return true;
     }
 
     if (nextNode.data.message) {
@@ -93,17 +132,14 @@ export async function tryHandleFlowMessage(params: {
     return true;
   }
 
-  // 2. No active session — does this message match a flow's trigger keyword?
   const { data: flows } = await supabase
     .from("flows")
-    .select("id, nodes, edges, trigger_keywords")
-    .eq("org_id", orgId)
-    .not("trigger_keywords", "is", null);
+    .select("*")
+    .eq("org_id", orgId);
 
-  const lowerText = text.toLowerCase();
   const matchedFlow = (flows ?? []).find((f) =>
-    (f.trigger_keywords ?? []).some(
-      (kw: string) => kw && lowerText.includes(kw.toLowerCase())
+    (f.trigger_keywords ?? []).some((kw: string) =>
+      text.toLowerCase().includes(kw.toLowerCase())
     )
   );
 
@@ -112,7 +148,6 @@ export async function tryHandleFlowMessage(params: {
   const nodes = (matchedFlow.nodes as FlowNode[]) ?? [];
   const edges = (matchedFlow.edges as FlowEdge[]) ?? [];
   const startNode = findStartNode(nodes, edges);
-
   if (!startNode) return false;
 
   if (startNode.data.message) {
