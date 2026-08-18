@@ -80,7 +80,7 @@ export async function tryHandleFlowMessage({
   fromPhone: string;
   text: string;
 }): Promise<boolean> {
-  const supabase = createAdminClient();
+  const supabase = await createAdminClient();
 
   const { data: session } = await supabase
     .from("flow_sessions")
