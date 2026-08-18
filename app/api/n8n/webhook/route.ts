@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+  const { first_name, last_name, email, phone } = body;
 
     if (!first_name && !email && !phone) {
       return NextResponse.json(
