@@ -1,18 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import crypto from "crypto";
 
-const DEFAULT_ORG_ID = "304206e2-c776-4034-b4b3-6f65a2e5b2af";
-const DEFAULT_USER_ID = "9325b9ed-2060-44fa-a2ba-fc1b2320bcc8";
+function hashKey(rawKey: string): string {
+  return crypto.createHash("sha256").update(rawKey).digest("hex");
+}
 
 export async function POST(request: NextRequest) {
   try {
     const secret = request.headers.get("x-n8n-secret");
-    if (!secret || secret !== process.env.N8N_WEBHOOK_SECRET) {
+    if (!secret) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const supabase = await createAdminClient();
+    const keyHash = hashKey(secret);
+
+    const { data: apiKey, error: keyError } = await supabase
+      .from("api_keys")
+      .select("id, org_id, created_by, revoked_at")
+      .eq("key_hash", keyHash)
+      .is("revoked_at", null)
+      .single();
+
+    if (keyError || !apiKey) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
-  const { first_name, last_name, email, phone } = body;
+    const { first_name, last_name, email, phone } = body;
 
     if (!first_name && !email && !phone) {
       return NextResponse.json(
@@ -21,18 +37,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createAdminClient();
-
     const { data: contact, error } = await supabase
       .from("contacts")
       .insert({
-        org_id: DEFAULT_ORG_ID,
+        org_id: apiKey.org_id,
         first_name: first_name ?? "Unknown",
         last_name: last_name ?? "",
         email: email ?? null,
         phone: phone ?? null,
-        created_by: DEFAULT_USER_ID,
-        owner_id: DEFAULT_USER_ID,
+        created_by: apiKey.created_by,
+        owner_id: apiKey.created_by,
         source: "n8n",
       })
       .select()
@@ -42,6 +56,12 @@ export async function POST(request: NextRequest) {
       console.error("N8N WEBHOOK ERROR:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    supabase
+      .from("api_keys")
+      .update({ last_used_at: new Date().toISOString() })
+      .eq("id", apiKey.id)
+      .then(() => {});
 
     return NextResponse.json({ success: true, contact });
   } catch (err) {
