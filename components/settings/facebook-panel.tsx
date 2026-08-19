@@ -18,7 +18,7 @@ export function FacebookPanel({ initialConnections }: { initialConnections: Face
 
   async function handleConnect() {
     if (!pageId.trim() || !pageToken.trim()) {
-      setError("Page ID aur Page Access Token dono zaroori hain.");
+      setError("Page ID and Page Access Token are both required.");
       return;
     }
     setPending(true);
@@ -50,7 +50,7 @@ export function FacebookPanel({ initialConnections }: { initialConnections: Face
   }
 
   async function handleDisconnect(id: string) {
-    if (!confirm("Is Facebook Page ko disconnect karein? Messenger auto-reply aur Lead Ads sync ruk jayega.")) return;
+    if (!confirm("Disconnect this Facebook Page? Messenger auto-reply and Lead Ads sync will stop.")) return;
     const result = await disconnectFacebookPage(id);
     if (result.success) {
       setConnections((prev) =>
@@ -65,7 +65,7 @@ export function FacebookPanel({ initialConnections }: { initialConnections: Face
         <div>
           <h2 className="text-sm font-semibold text-zinc-900">Facebook Pages</h2>
           <p className="text-xs text-zinc-500">
-            Messenger auto-reply aur Lead Ads leads is CRM mein automatically aayenge.
+            Messenger auto-replies and Lead Ads leads will automatically appear in this CRM.
           </p>
         </div>
         {!showForm && (
@@ -125,7 +125,7 @@ export function FacebookPanel({ initialConnections }: { initialConnections: Face
 
       <div className="divide-y divide-zinc-100 border border-zinc-200 rounded-lg">
         {connections.length === 0 && (
-          <p className="text-sm text-zinc-400 p-4">Koi Facebook Page connected nahi hai.</p>
+          <p className="text-sm text-zinc-400 p-4">No Facebook Page connected yet.</p>
         )}
         {connections.map((c) => (
           <div key={c.id} className="flex items-center justify-between p-3">
