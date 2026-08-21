@@ -55,33 +55,40 @@ export function WhatsAppPanel({
     if (digits.length < 7) return;
 
     const supabase = createClient();
-    const channel = supabase
-      .channel(`whatsapp-thread-${digits}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "whatsapp_messages" },
-        (payload) => {
-          setEvtCount((c) => c + 1);
-        const row = payload.new as WhatsAppMessage;
-          if (last10Digits(row.phone) !== digits) return;
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === row.id)) return prev;
-            return [...prev, row];
-          });
-        }
-      )
-      .subscribe((status) => {
-        setRtStatus(status);
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          setTimeout(() => {
-            supabase.removeChannel(channel);
-            channel.subscribe((s) => setRtStatus(s));
-          }, 2000);
-        }
-      });
+    let cancelled = false;
+    let currentChannel: any = null;
+
+    function connect() {
+      const ch = supabase
+        .channel(`whatsapp-thread-${digits}-${Date.now()}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "whatsapp_messages" },
+          (payload) => {
+            setEvtCount((c) => c + 1);
+            const row = payload.new as WhatsAppMessage;
+            if (last10Digits(row.phone) !== digits) return;
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === row.id)) return prev;
+              return [...prev, row];
+            });
+          }
+        )
+        .subscribe((status) => {
+          setRtStatus(status);
+          if (!cancelled && (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")) {
+            supabase.removeChannel(ch);
+            setTimeout(connect, 2000);
+          }
+        });
+      currentChannel = ch;
+    }
+
+    connect();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (currentChannel) supabase.removeChannel(currentChannel);
     };
   }, [phone]);
 
