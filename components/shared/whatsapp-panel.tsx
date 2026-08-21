@@ -5,13 +5,17 @@
  *
  * WhatsApp conversation panel for the Contact detail page. Renders the
  * message thread as chat bubbles and a send box. Calls the Server
- * Actions in lib/actions/whatsapp.ts — never talks to the WhatsApp API
+ * Actions in lib/actions/whatsapp.ts -- never talks to the WhatsApp API
  * or Supabase directly from the client.
+ *
+ * Live updates: subscribes to Supabase Realtime on whatsapp_messages so
+ * new inbound/outbound messages appear without a manual page refresh.
  */
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import { MessageCircle, Send, Loader2 } from "lucide-react";
 import { getWhatsAppThread, sendWhatsAppToContact, type WhatsAppMessage } from "@/lib/actions/whatsapp";
+import { createClient } from "@/lib/supabase/client";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -20,6 +24,10 @@ function formatTime(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function last10Digits(phone: string) {
+  return phone.replace(/\D/g, "").slice(-10);
 }
 
 export function WhatsAppPanel({
@@ -38,6 +46,33 @@ export function WhatsAppPanel({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  useEffect(() => {
+    if (!phone) return;
+    const digits = last10Digits(phone);
+    if (digits.length < 7) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`whatsapp-thread-${digits}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "whatsapp_messages" },
+        (payload) => {
+          const row = payload.new as WhatsAppMessage;
+          if (last10Digits(row.phone) !== digits) return;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === row.id)) return prev;
+            return [...prev, row];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [phone]);
 
   if (!phone) {
     return (
