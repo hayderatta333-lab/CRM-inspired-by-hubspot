@@ -8,6 +8,9 @@ export default async function InboxPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
+      <pre className="text-[10px] p-2 bg-yellow-50 overflow-auto max-h-48">
+        {JSON.stringify(result, null, 2)}
+      </pre>
       <InboxPanel initialThreads={threads} />
     </div>
   );
