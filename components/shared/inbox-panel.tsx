@@ -240,7 +240,7 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
               <span className="ml-auto text-[10px] text-zinc-400">RT: {rtStatus}</span>
             </div>
 
-            <div className="flex flex-1 flex-col justify-end gap-1.5 overflow-y-auto bg-zinc-50 px-3 py-3">
+            <div className="flex flex-1 flex-col justify-end gap-0.5 overflow-y-auto bg-zinc-50 px-3 py-2">
               {messages.length === 0 && (
                 <p className="m-auto text-xs text-zinc-400">No messages yet.</p>
               )}
@@ -250,7 +250,7 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
                   className={`flex ${m.direction === "outbound" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[70%] rounded-lg px-3 py-1.5 text-sm shadow-sm ${
+                    className={`max-w-[45%] min-w-0 rounded-lg px-2 py-1 text-[13px] leading-snug shadow-sm ${
                       m.direction === "outbound"
                         ? selected.channel === "whatsapp"
                           ? "bg-emerald-600 text-white"
@@ -258,9 +258,9 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
                         : "border border-zinc-200 bg-white text-zinc-800"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{m.text}</p>
+                    <p className="whitespace-pre-wrap break-words">{m.text}</p>
                     <p
-                      className={`mt-0.5 text-right text-[10px] ${
+                      className={`mt-0.5 text-right text-[9px] ${
                         m.direction === "outbound" ? "text-white/80" : "text-zinc-400"
                       }`}
                     >
