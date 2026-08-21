@@ -42,6 +42,7 @@ export function WhatsAppPanel({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [rtStatus, setRtStatus] = useState<string>("connecting...");
+  const [evtCount, setEvtCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,7 +61,8 @@ export function WhatsAppPanel({
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "whatsapp_messages" },
         (payload) => {
-          const row = payload.new as WhatsAppMessage;
+          setEvtCount((c) => c + 1);
+        const row = payload.new as WhatsAppMessage;
           if (last10Digits(row.phone) !== digits) return;
           setMessages((prev) => {
             if (prev.some((m) => m.id === row.id)) return prev;
@@ -122,7 +124,7 @@ export function WhatsAppPanel({
       <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3">
         <MessageCircle className="size-4 text-emerald-600" />
         <h2 className="text-sm font-semibold text-zinc-900">WhatsApp</h2>
-        <span className="ml-auto text-xs text-zinc-400">{phone} | RT: {rtStatus}</span>
+        <span className="ml-auto text-xs text-zinc-400">{phone} | RT: {rtStatus} | Evts: {evtCount}</span>
       </div>
 
       <div className="flex max-h-96 min-h-40 flex-col gap-2 overflow-y-auto bg-zinc-50 px-4 py-3">
