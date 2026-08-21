@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, Building2, KanbanSquare, Workflow, Settings } from "lucide-react";
+import { LayoutDashboard, Inbox, Users, Building2, KanbanSquare, Workflow, Settings } from "lucide-react";
 import type { OrgRole } from "@/types/crm";
 import { isManagerRole } from "@/types/crm";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/contacts", label: "Contacts", icon: Users },
   { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/deals", label: "Deals", icon: KanbanSquare },
