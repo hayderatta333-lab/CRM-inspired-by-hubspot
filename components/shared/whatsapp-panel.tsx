@@ -72,7 +72,7 @@ export function WhatsAppPanel({
       )
       .subscribe((status) => {
         setRtStatus(status);
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
           setTimeout(() => {
             supabase.removeChannel(channel);
             channel.subscribe((s) => setRtStatus(s));
