@@ -78,7 +78,7 @@ export function WhatsAppPanel({
           setRtStatus(status);
           if (!cancelled && (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")) {
             supabase.removeChannel(ch);
-            setTimeout(connect, 2000);
+            setTimeout(connect, 300);
           }
         });
       currentChannel = ch;
