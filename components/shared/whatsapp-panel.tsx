@@ -70,7 +70,15 @@ export function WhatsAppPanel({
           });
         }
       )
-      .subscribe((status) => setRtStatus(status));
+      .subscribe((status) => {
+        setRtStatus(status);
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setTimeout(() => {
+            supabase.removeChannel(channel);
+            channel.subscribe((s) => setRtStatus(s));
+          }, 2000);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
