@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getInboxThreads } from "@/lib/actions/inbox";
 import { InboxPanel } from "@/components/shared/inbox-panel";
 
