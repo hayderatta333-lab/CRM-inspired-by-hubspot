@@ -80,8 +80,18 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
     const supabase = createClient();
     let cancelled = false;
     let currentChannel: any = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
+
+    function scheduleReconnect() {
+      if (cancelled) return;
+      const delay = Math.min(300 * 2 ** attempt, 5000);
+      attempt += 1;
+      retryTimer = setTimeout(connect, delay);
+    }
 
     function connect() {
+      if (cancelled) return;
       const ch = supabase
         .channel(`inbox-thread-${channelType}-${digits}-${Date.now()}`)
         .on(
@@ -105,9 +115,14 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
         )
         .subscribe((status) => {
           setRtStatus(status);
+          if (status === "SUBSCRIBED") {
+            attempt = 0;
+            return;
+          }
           if (!cancelled && (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")) {
             supabase.removeChannel(ch);
-            setTimeout(connect, 300);
+            if (currentChannel === ch) currentChannel = null;
+            scheduleReconnect();
           }
         });
       currentChannel = ch;
@@ -115,8 +130,24 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
 
     connect();
 
+    function handleResume() {
+      if (!cancelled && document.visibilityState === "visible") {
+        if (currentChannel) supabase.removeChannel(currentChannel);
+        attempt = 0;
+        connect();
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleResume);
+    window.addEventListener("online", handleResume);
+    window.addEventListener("focus", handleResume);
+
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      document.removeEventListener("visibilitychange", handleResume);
+      window.removeEventListener("online", handleResume);
+      window.removeEventListener("focus", handleResume);
       if (currentChannel) supabase.removeChannel(currentChannel);
     };
   }, [selected?.channelId, selected?.channel]);
@@ -160,8 +191,8 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
 
   return (
     <div className="flex h-full overflow-hidden rounded-lg border border-zinc-200 bg-white">
-      <div className="flex w-72 shrink-0 flex-col border-r border-zinc-200">
-        <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3">
+      <div className="flex w-64 shrink-0 flex-col border-r border-zinc-200">
+        <div className="flex items-center gap-2 border-b border-zinc-100 px-3 py-2.5">
           <InboxIcon className="size-4 text-zinc-400" />
           <h2 className="text-sm font-semibold text-zinc-900">Inbox</h2>
         </div>
@@ -173,7 +204,7 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
             <button
               key={`${t.channel}-${t.channelId}`}
               onClick={() => setSelected(t)}
-              className={`flex w-full flex-col gap-0.5 border-b border-zinc-100 px-4 py-3 text-left hover:bg-zinc-50 ${
+              className={`flex w-full flex-col gap-0.5 border-b border-zinc-100 px-3 py-2.5 text-left hover:bg-zinc-50 ${
                 selected?.channelId === t.channelId && selected?.channel === t.channel ? "bg-zinc-50" : ""
               }`}
             >
@@ -199,17 +230,17 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3">
+            <div className="flex items-center gap-2 border-b border-zinc-100 px-3 py-2.5">
               {selected.channel === "whatsapp" ? (
                 <MessageCircle className="size-4 text-emerald-600" />
               ) : (
                 <Facebook className="size-4 text-blue-600" />
               )}
               <h2 className="text-sm font-semibold text-zinc-900">{selected.contactName}</h2>
-              <span className="ml-auto text-xs text-zinc-400">RT: {rtStatus}</span>
+              <span className="ml-auto text-[10px] text-zinc-400">RT: {rtStatus}</span>
             </div>
 
-            <div className="flex flex-1 flex-col gap-2 overflow-y-auto bg-zinc-50 px-4 py-3">
+            <div className="flex flex-1 flex-col justify-end gap-1.5 overflow-y-auto bg-zinc-50 px-3 py-3">
               {messages.length === 0 && (
                 <p className="m-auto text-xs text-zinc-400">No messages yet.</p>
               )}
@@ -219,7 +250,7 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
                   className={`flex ${m.direction === "outbound" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[75%] rounded-lg px-3 py-2 text-sm shadow-sm ${
+                    className={`max-w-[70%] rounded-lg px-3 py-1.5 text-sm shadow-sm ${
                       m.direction === "outbound"
                         ? selected.channel === "whatsapp"
                           ? "bg-emerald-600 text-white"
@@ -229,7 +260,7 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
                   >
                     <p className="whitespace-pre-wrap">{m.text}</p>
                     <p
-                      className={`mt-1 text-right text-[10px] ${
+                      className={`mt-0.5 text-right text-[10px] ${
                         m.direction === "outbound" ? "text-white/80" : "text-zinc-400"
                       }`}
                     >
@@ -242,12 +273,12 @@ export function InboxPanel({ initialThreads }: { initialThreads: InboxThread[] }
             </div>
 
             {error && (
-              <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-600">
+              <p className="border-t border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
                 {error}
               </p>
             )}
 
-            <div className="flex items-center gap-2 border-t border-zinc-100 p-3">
+            <div className="flex items-center gap-2 border-t border-zinc-100 p-2.5">
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
