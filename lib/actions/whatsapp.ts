@@ -47,10 +47,10 @@ export async function getWhatsAppThread(
       .from("whatsapp_messages")
       .select("id, phone, contact_name, message_text, direction, created_at")
       .ilike("phone", `%${digits}`)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false }).limit(100);
 
     if (error) throw error;
-    return ok((data ?? []) as WhatsAppMessage[]);
+    return ok(((data ?? []) as WhatsAppMessage[]).reverse());
   } catch (err) {
     return toActionError(err);
   }
