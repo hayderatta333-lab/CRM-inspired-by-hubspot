@@ -9,7 +9,7 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { requireRole, requireOrgContext } from "@/lib/auth/session";
 import { ok, fail, toActionError, type ActionResult } from "@/lib/actions/action-result";
 import { z } from "zod";
