@@ -28,7 +28,7 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/api/whatsapp/webhook") || request.nextUrl.pathname.startsWith("/api/whatsapp/send") || request.nextUrl.pathname.startsWith("/api/n8n") || request.nextUrl.pathname.startsWith("/api/facebook")) {
+  if (request.nextUrl.pathname.startsWith("/api/whatsapp/webhook") || request.nextUrl.pathname.startsWith("/api/whatsapp/send") || request.nextUrl.pathname.startsWith("/api/n8n") || request.nextUrl.pathname.startsWith("/api/facebook") || request.nextUrl.pathname.startsWith("/api/instagram")) {
     return NextResponse.next();
   }
 
